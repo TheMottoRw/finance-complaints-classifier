@@ -175,6 +175,76 @@ def predict():
     departments = Department.query.all()
     return render_template('predict.html', departments=departments)
 
+
+@app.route('/edit_complaint_category', methods=['GET','POST'])
+def edit_complaint_category():
+    """
+    Route to handle updating complaint categories
+    Expects POST data: complaint_id, new_category, reason (optional)
+    """
+    try:
+        if request.method != 'POST':
+            complaints = Complaint.query.all()  # or filter by current user if needed
+            return render_template("edit_complaint_category.html",complaints=complaints)
+        # Get form data
+        complaint_id = request.form.get('complaint_id')
+        new_category = request.form.get('new_category')
+        reason = request.form.get('reason', '')  # Optional field
+
+        # Validate required fields
+        if not complaint_id or not new_category:
+            flash('Missing required information. Please try again.', 'error')
+            return redirect(url_for('manage_complaints'))
+
+        # Find the complaint in the database
+        complaint = Complaint.query.get(complaint_id)
+
+        if not complaint:
+            flash('Complaint not found.', 'error')
+            return redirect(url_for('manage_complaints'))
+
+        # Store old category for logging/feedback
+        old_category = complaint.category
+
+        # Update the complaint category
+        complaint.category = new_category
+
+        # Optional: If you want to store the reason for the change
+        # You might need to add a 'change_reason' or 'notes' field to your model
+        if hasattr(complaint, 'change_reason'):
+            complaint.change_reason = reason
+
+        # Optional: Add timestamp for when category was changed
+        if hasattr(complaint, 'category_updated_at'):
+            from datetime import datetime
+            complaint.category_updated_at = datetime.utcnow()
+
+        # Save changes to database
+        db.session.commit()
+
+        # Success message
+        flash(f'Complaint category successfully updated from "{old_category}" to "{new_category}".', 'success')
+
+    except Exception as e:
+        # Handle any database errors
+        db.session.rollback()
+        flash('An error occurred while updating the complaint category. Please try again.', 'error')
+        print(f"Error updating complaint category: {str(e)}")  # For debugging
+
+    # Redirect back to the manage complaints page
+    return redirect(url_for('manage_complaints'))
+
+
+@app.route('/manage_complaints')
+def manage_complaints():
+    """
+    Route to display the manage complaints page
+    """
+    # Get all complaints from database
+    # Adjust this query based on your user authentication system
+    complaints = Complaint.query.all()  # or filter by current user if needed
+
+    return render_template('manage_complaints.html', complaints=complaints)
 def create_default_admin():
     """Create a default admin user if it doesn't exist"""
     admin = User.query.filter_by(email='asua@yopmail.com').first()

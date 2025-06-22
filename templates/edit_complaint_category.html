@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Complaints - Complaint Management System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Manage Complaints</h1>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Complaint Management</h5>
+                    <p class="card-text">Review and re-assign categories for your classified complaints.</p>
+                    <a href="{{ url_for('predict') }}" class="btn btn-outline-primary">Classify New Complaint</a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Classified Complaints - Category Management</h5>
+                </div>
+                <div class="card-body">
+                    {% if complaints %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Complaint Subject</th>
+                                    <th>Complaint Text</th>
+                                    <th>Current Category</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for complaint in complaints %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ complaint.title }}</td>
+                                    <td>{{ complaint.content|truncate(100) }}</td>
+                                    <td><span class="badge bg-primary">{{ complaint.category }}</span></td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#reassignModal{{ loop.index }}">
+                                            Re-assign Category
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        You haven't classified any complaints yet. <a href="{{ url_for('predict') }}">Classify your first complaint</a>.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Re-assigning Categories -->
+{% if complaints %}
+{% for complaint in complaints %}
+<div class="modal fade" id="reassignModal{{ loop.index }}" tabindex="-1" aria-labelledby="reassignModalLabel{{ loop.index }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reassignModalLabel{{ loop.index }}">Re-assign Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('edit_complaint_category') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="complaint_id" value="{{ complaint.id }}">
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Complaint Title:</strong></label>
+                        <p class="text-muted">{{ complaint.title }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Complaint Text:</strong></label>
+                        <p class="text-muted">{{ complaint.content|truncate(150) }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Current Category:</strong></label>
+                        <p><span class="badge bg-secondary">{{ complaint.category }}</span></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="new_category{{ loop.index }}" class="form-label"><strong>New Category:</strong></label>
+                        <select class="form-select" id="new_category{{ loop.index }}" name="new_category" required>
+                            <option value="">Select a new category...</option>
+                            <option value="Credit card or prepaid card" {% if complaint.category == 'Credit card or prepaid card' %}selected{% endif %}>Credit card or prepaid card</option>
+                            <option value="Debt collection" {% if complaint.category == 'Debt collection' %}selected{% endif %}>Debt collection</option>
+                            <option value="Mortgage" {% if complaint.category == 'Mortgage' %}selected{% endif %}>Mortgage</option>
+                            <option value="Student loan" {% if complaint.category == 'Student loan' %}selected{% endif %}>Student loan</option>
+                            <option value="Bank account or service" {% if complaint.category == 'Bank account or service' %}selected{% endif %}>Bank account or service</option>
+                            <option value="Consumer loan" {% if complaint.category == 'Consumer loan' %}selected{% endif %}>Consumer loan</option>
+                            <option value="Credit reporting" {% if complaint.category == 'Credit reporting' %}selected{% endif %}>Credit reporting</option>
+                            <option value="Money transfer" {% if complaint.category == 'Money transfer' %}selected{% endif %}>Money transfer</option>
+                            <option value="Payday loan" {% if complaint.category == 'Payday loan' %}selected{% endif %}>Payday loan</option>
+                            <option value="Other financial service" {% if complaint.category == 'Other financial service' %}selected{% endif %}>Other financial service</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason{{ loop.index }}" class="form-label"><strong>Reason for Change (Optional):</strong></label>
+                        <textarea class="form-control" id="reason{{ loop.index }}" name="reason" rows="3" placeholder="Explain why you're changing this category..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge {
+        font-size: 0.9em;
+    }
+
+    .modal-body p {
+        margin-bottom: 0.5rem;
+    }
+
+    .modal-body .form-label {
+        margin-bottom: 0.25rem;
+    }
+
+    .btn-warning {
+        color: #000;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
