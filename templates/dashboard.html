@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Complaint Management System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Your Complaints Dashboard</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Quick Actions</h5>
+                    <a href="{{ url_for('predict') }}" class="btn btn-primary">Classify New Complaint</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Classified Complaints</h5>
+                </div>
+                <div class="card-body">
+                    {% if complaints %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Complaint Subject</th>
+                                    <th>Complaint Text</th>
+                                    <th>Category</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for complaint in complaints %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ complaint.title }}</td>
+                                    <td>{{ complaint.content|truncate(100) }}</td>
+                                    <td><span class="badge bg-primary">{{ complaint.category }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        You haven't classified any complaints yet. <a href="{{ url_for('predict') }}">Classify your first complaint</a>.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge {
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Complaint Management System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="mt-5">Finance Complaints Classifier</h1>
+            <p class="lead">
+                This application helps classify financial complaints into different categories using machine learning.
+            </p>
+            <div class="mt-4">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('predict') }}" class="btn btn-primary btn-lg">Classify a Complaint</a>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg ms-2">View Dashboard</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">Login</a>
+                <a href="{{ url_for('signup') }}" class="btn btn-outline-secondary btn-lg ms-2">Sign Up</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Classify Complaints</h5>
+                    <p class="card-text">Use machine learning to automatically categorize financial complaints.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Track History</h5>
+                    <p class="card-text">Keep a record of all your classified complaints for future reference.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Secure Storage</h5>
+                    <p class="card-text">All your complaint data is securely stored and accessible only to you.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+</style>
+{% endblock %}
