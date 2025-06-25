@@ -25,7 +25,7 @@ batch_accuracies = {model_name: [] for model_name in models.keys()}  # Store bat
 tfidf_vectorizer = None
 all_classes_list = None
 
-def predict_complaint(complaint_text, model_name="SGD Classifier"):
+def predict_complaint(complaint_text, model_name="Logistic Regression Model"):
     """
     Predict the category of a complaint using the specified model.
 

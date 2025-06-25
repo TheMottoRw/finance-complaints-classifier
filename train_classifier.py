@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.model_selection import train_test_split
 
 models = {
@@ -20,12 +20,18 @@ models = {
     "SGD Classifier": SGDClassifier(loss="hinge", random_state=42)  # Linear SVM-like classifier
 }
 batch_accuracies = {model_name: [] for model_name in models.keys()}  # Store batch accuracy
+batch_precisions = {model_name: [] for model_name in models.keys()}  # Store batch precision
+batch_recalls = {model_name: [] for model_name in models.keys()}  # Store batch recall
+batch_f1_scores = {model_name: [] for model_name in models.keys()}  # Store batch F1-score
 
 # Global variables for signal handling
 tfidf_vectorizer = None
 all_classes_list = None
+batch_precisions = None
+batch_recalls = None
+batch_f1_scores = None
 
-def save_models_with_timestamp(models_dict, tfidf, all_classes, batch_accuracies):
+def save_models_with_timestamp(models_dict, tfidf, all_classes, batch_accuracies, batch_precisions=None, batch_recalls=None, batch_f1_scores=None):
     """
     Save all models with a timestamp in the filename.
 
@@ -34,6 +40,9 @@ def save_models_with_timestamp(models_dict, tfidf, all_classes, batch_accuracies
         tfidf: TF-IDF vectorizer
         all_classes: List of unique classes
         batch_accuracies (dict): Dictionary of model name to list of batch accuracies
+        batch_precisions (dict): Dictionary of model name to list of batch precisions
+        batch_recalls (dict): Dictionary of model name to list of batch recalls
+        batch_f1_scores (dict): Dictionary of model name to list of batch F1-scores
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -60,8 +69,9 @@ def signal_handler(sig, frame):
     """
     Handle Ctrl+C (SIGINT) by saving models with timestamp before exiting.
     """
+    global batch_precisions, batch_recalls, batch_f1_scores
     print("\nCtrl+C detected! Saving models before exiting...")
-    save_models_with_timestamp(models, tfidf_vectorizer, all_classes_list, batch_accuracies)
+    save_models_with_timestamp(models, tfidf_vectorizer, all_classes_list, batch_accuracies, batch_precisions, batch_recalls, batch_f1_scores)
     print("Models saved. Exiting gracefully.")
     exit(0)
 
@@ -91,7 +101,7 @@ def train_model():
     Returns:
         None
     """
-    global models, batch_accuracies, tfidf_vectorizer, all_classes_list
+    global models, batch_accuracies, batch_precisions, batch_recalls, batch_f1_scores, tfidf_vectorizer, all_classes_list
 
     # Register signal handler for Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
@@ -103,15 +113,20 @@ def train_model():
     tfidf = TfidfVectorizer(stop_words="english", max_features=5000, ngram_range=(1,2))
     tfidf_vectorizer = tfidf  # Update global variable
 
+    # Update global variables for metrics tracking
+    batch_precisions = {model_name: [] for model_name in models.keys()}
+    batch_recalls = {model_name: [] for model_name in models.keys()}
+    batch_f1_scores = {model_name: [] for model_name in models.keys()}
+
     # Initialize models for online learning
 
 
     # Flag to control which models to train (set to False to skip a model)
     train_models = {
-        "Logistic Regression": False,
-        "Linear SVC": False,
-        "Random Forest": False,
-        "Multinomial NB": False,
+        "Logistic Regression": True,
+        "Linear SVC": True,
+        "Random Forest": True,
+        "Multinomial NB": True,
         "SGD Classifier": True
     }
 
@@ -226,12 +241,20 @@ def train_model():
                 # Predict batch
                 y_pred = model.predict(X_test_tfidf)
 
-                # Calculate batch accuracy
+                # Calculate batch metrics
                 batch_acc = accuracy_score(y_test, y_pred)
+                batch_precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+                batch_recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+                batch_f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
+
+                # Store batch metrics
                 batch_accuracies[model_name].append(batch_acc)
+                batch_precisions[model_name].append(batch_precision)
+                batch_recalls[model_name].append(batch_recall)
+                batch_f1_scores[model_name].append(batch_f1)
 
                 training_time = time.time() - start_time
-                print(f"{model_name} - Batch Accuracy: {batch_acc:.4f}, Training Time: {training_time:.2f}s")
+                print(f"{model_name} - Batch Metrics: Accuracy: {batch_acc:.4f}, Precision: {batch_precision:.4f}, Recall: {batch_recall:.4f}, F1-Score: {batch_f1:.4f}, Training Time: {training_time:.2f}s")
 
                 # If a model takes too long (> 30 seconds), disable it for future batches
                 if training_time > 30:
@@ -257,7 +280,7 @@ def train_model():
                 no_improvement_count = 0
                 # Save models when we get a new best accuracy
                 print(f"\nNew best average accuracy: {best_avg_acc:.4f}. Saving models...")
-                save_models_with_timestamp(models, tfidf, all_classes, batch_accuracies)
+                save_models_with_timestamp(models, tfidf, all_classes, batch_accuracies, batch_precisions, batch_recalls, batch_f1_scores)
                 print("Models saved successfully!")
             else:
                 no_improvement_count += 1
@@ -270,17 +293,112 @@ def train_model():
         # Periodic saving
         if batch_count % save_interval == 0:
             print(f"\nPeriodic save at batch {batch_count}...")
-            save_models_with_timestamp(models, tfidf, all_classes, batch_accuracies)
+            save_models_with_timestamp(models, tfidf, all_classes, batch_accuracies, batch_precisions, batch_recalls, batch_f1_scores)
             print("Models saved successfully!")
 
-    # Print average batch accuracy for each model
-    print("\nAverage Batch Accuracies:")
-    for model_name, accuracies in batch_accuracies.items():
-        avg_acc = np.mean(accuracies) if accuracies else 0.0
-        print(f"{model_name}: {avg_acc:.4f}")
+    # Print average batch metrics for each model and track best performers
+    print("\nAverage Batch Metrics:")
+
+    # Dictionaries to track best models for each metric
+    best_models = {
+        'accuracy': {'model': None, 'value': 0},
+        'precision': {'model': None, 'value': 0},
+        'recall': {'model': None, 'value': 0},
+        'f1': {'model': None, 'value': 0}
+    }
+
+    # Dictionary to store average metrics for each model
+    model_metrics = {}
+
+    for model_name in batch_accuracies.keys():
+        accuracies = batch_accuracies[model_name]
+        precisions = batch_precisions[model_name]
+        recalls = batch_recalls[model_name]
+        f1_scores = batch_f1_scores[model_name]
+
+        if accuracies:  # If there are any metric values
+            avg_acc = np.mean(accuracies)
+            avg_precision = np.mean(precisions)
+            avg_recall = np.mean(recalls)
+            avg_f1 = np.mean(f1_scores)
+
+            # Store metrics for this model
+            model_metrics[model_name] = {
+                'accuracy': avg_acc,
+                'precision': avg_precision,
+                'recall': avg_recall,
+                'f1': avg_f1
+            }
+
+            # Update best models if this one is better
+            if avg_acc > best_models['accuracy']['value']:
+                best_models['accuracy'] = {'model': model_name, 'value': avg_acc}
+            if avg_precision > best_models['precision']['value']:
+                best_models['precision'] = {'model': model_name, 'value': avg_precision}
+            if avg_recall > best_models['recall']['value']:
+                best_models['recall'] = {'model': model_name, 'value': avg_recall}
+            if avg_f1 > best_models['f1']['value']:
+                best_models['f1'] = {'model': model_name, 'value': avg_f1}
+
+            print(f"{model_name}:")
+            print(f"  Accuracy: {avg_acc:.4f}")
+            print(f"  Precision: {avg_precision:.4f}")
+            print(f"  Recall: {avg_recall:.4f}")
+            print(f"  F1-Score: {avg_f1:.4f}")
+        else:
+            print(f"{model_name}: No metrics available")
+
+    # Print summary of best models for each metric
+    print("\n" + "="*50)
+    print("PERFORMANCE COMPARISON SUMMARY")
+    print("="*50)
+
+    print("\nBest Model for Each Metric:")
+    for metric, data in best_models.items():
+        if data['model']:
+            print(f"  Best {metric.capitalize()}: {data['model']} ({data['value']:.4f})")
+
+    # Determine overall best model
+    model_scores = {}
+    for metric, data in best_models.items():
+        if data['model']:
+            if data['model'] not in model_scores:
+                model_scores[data['model']] = 0
+            model_scores[data['model']] += 1
+
+    # Find model with highest score
+    if model_scores:
+        overall_best_model = max(model_scores.items(), key=lambda x: x[1])[0]
+
+        # Calculate average rank across all metrics
+        model_ranks = {model: [] for model in model_metrics.keys()}
+        for metric in ['accuracy', 'precision', 'recall', 'f1']:
+            # Sort models by this metric
+            sorted_models = sorted(model_metrics.items(), key=lambda x: x[1][metric], reverse=True)
+            # Assign ranks
+            for rank, (model, _) in enumerate(sorted_models, 1):
+                model_ranks[model].append(rank)
+
+        # Calculate average rank for each model
+        avg_ranks = {model: np.mean(ranks) for model, ranks in model_ranks.items() if ranks}
+        # Find model with best (lowest) average rank
+        best_avg_rank_model = min(avg_ranks.items(), key=lambda x: x[1])[0]
+
+        print(f"\nOverall Best Model (most wins): {overall_best_model}")
+        print(f"Best Model by Average Rank: {best_avg_rank_model} (Avg Rank: {avg_ranks[best_avg_rank_model]:.2f})")
+
+        print("\nDetailed Performance Comparison:")
+        print(f"{'Model':<20} {'Accuracy':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'Avg Rank':<10}")
+        print("-" * 70)
+        for model, metrics in model_metrics.items():
+            print(f"{model:<20} {metrics['accuracy']:.4f}     {metrics['precision']:.4f}     {metrics['recall']:.4f}     {metrics['f1']:.4f}     {avg_ranks.get(model, 'N/A'):<10}")
+    else:
+        print("\nNo models have been successfully trained and evaluated.")
+
+    print("="*50)
 
     # Final save of all models & TF-IDF Vectorizer with timestamp
-    save_models_with_timestamp(models, tfidf, all_classes, batch_accuracies)
+    save_models_with_timestamp(models, tfidf, all_classes, batch_accuracies, batch_precisions, batch_recalls, batch_f1_scores)
     print("\nAll models and vectorizer saved successfully!")
 
 if __name__ == "__main__":
